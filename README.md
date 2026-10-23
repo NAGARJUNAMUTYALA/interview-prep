@@ -2,11 +2,15 @@
 
 A lightweight Spring Boot microservice designed for interview preparation workflows.
 
-## Features
+## Architecture & Design
 - **Java 21 & Spring Boot 3.3.4**
+- **Layered Architecture**:
+  - `PrepController`: REST layer exposing the `prepStart` endpoint.
+  - `PrepService`: Interface defining the interview prep contracts.
+  - `PrepServiceImpl`: Implementation handling business logic & module curation.
+  - `PrepStartResponse`: Immutable Java Record DTO.
 - **Single Dedicated API Endpoint**: `prepStart` initializes and returns interview prep session modules and topics.
-- **RESTful Design**: Clean JSON response model with session tracking.
-- **Unit & Integration Tests**: Included with Spring MVC test support.
+- **Unit & Integration Tests**: Comprehensive tests for controller layer (MockMvc) and service layer.
 
 ---
 
