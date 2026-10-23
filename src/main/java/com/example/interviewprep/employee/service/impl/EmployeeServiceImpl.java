@@ -7,13 +7,17 @@ import com.example.interviewprep.employee.dto.EmployeeResponse;
 import com.example.interviewprep.employee.entity.Department;
 import com.example.interviewprep.employee.entity.Employee;
 import com.example.interviewprep.employee.repository.EmployeeRepository;
+import com.example.interviewprep.employee.repository.EmployeeSpecification;
 import com.example.interviewprep.employee.service.EmployeeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
 
 /**
  * Production implementation of {@link EmployeeService}.
@@ -91,38 +95,42 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     /**
-     * Retrieves a paginated and filtered page of employees.
-     *
-     * <ul>
-     *   <li><b>Purpose:</b> Power enterprise UI tables with server-side pagination, sorting, and multi-field search.</li>
-     *   <li><b>Input:</b> Optional {@link Department}, optional search keyword (matched against first name, last name, or email), and {@link Pageable}.</li>
-     *   <li><b>Output:</b> {@link Page} of {@link EmployeeResponse} objects including total counts and pagination metadata.</li>
-     *   <li><b>Repository Interaction:</b> Executes JPQL query {@link EmployeeRepository#searchEmployees(Department, String, Pageable)}.</li>
-     *   <li><b>Transaction Behavior:</b> Read-only transaction.</li>
-     *   <li><b>Design Decision:</b> Uses Spring Data JPA {@code Page.map()} to transform entities into DTOs within the active persistence context.</li>
-     * </ul>
+     * Retrieves a paginated and filtered page of employees using JPQL.
      */
     @Override
     public Page<EmployeeResponse> getAllEmployees(Department department, String search, Pageable pageable) {
-        log.debug("Fetching employees with department: {}, search: {}, page: {}", department, search, pageable.getPageNumber());
-        String effectiveSearch = (search != null && !search.isBlank()) ? search.trim() : null;
-        return employeeRepository.searchEmployees(department, effectiveSearch, pageable)
-                .map(EmployeeResponse::fromEntity);
+        return getAllEmployees(department, search, null, null, pageable);
+    }
+
+    /**
+     * Retrieves a paginated and dynamically filtered page of employees using composable JPA Specifications.
+     *
+     * <ul>
+     *   <li><b>Purpose:</b> Power enterprise UI search filters with salary range, department, and full-text keyword criteria.</li>
+     *   <li><b>Input:</b> Optional {@link Department}, search string, {@code minSalary}, {@code maxSalary}, and {@link Pageable}.</li>
+     *   <li><b>Output:</b> {@link Page} of {@link EmployeeResponse} objects.</li>
+     *   <li><b>Repository Interaction:</b> Executes {@link EmployeeRepository#findAll(Specification, Pageable)}.</li>
+     *   <li><b>Transaction Behavior:</b> Read-only transaction.</li>
+     *   <li><b>Design Decision:</b> JPA Criteria API dynamically builds SQL WHERE clauses avoiding SQL injection and string concatenation bugs.</li>
+     * </ul>
+     */
+    @Override
+    public Page<EmployeeResponse> getAllEmployees(
+            Department department,
+            String search,
+            BigDecimal minSalary,
+            BigDecimal maxSalary,
+            Pageable pageable
+    ) {
+        log.debug("Fetching employees with criteria - dept: {}, search: {}, minSalary: {}, maxSalary: {}",
+                department, search, minSalary, maxSalary);
+
+        Specification<Employee> spec = EmployeeSpecification.buildSpecification(department, search, minSalary, maxSalary);
+        return employeeRepository.findAll(spec, pageable).map(EmployeeResponse::fromEntity);
     }
 
     /**
      * Updates an existing Employee entity with new details.
-     *
-     * <ul>
-     *   <li><b>Purpose:</b> Modify employee attributes while safeguarding identity and uniqueness constraints.</li>
-     *   <li><b>Input:</b> {@code Long id} and updated {@link EmployeeRequest}.</li>
-     *   <li><b>Output:</b> Updated {@link EmployeeResponse}.</li>
-     *   <li><b>Validation & Rules:</b> Employee must exist. If email is changed, the new email must not belong to another employee.</li>
-     *   <li><b>Repository Interaction:</b> Loads existing entity via {@code findById}, checks email uniqueness if altered, updates fields via setters.</li>
-     *   <li><b>Transaction Behavior:</b> {@code @Transactional} (read-write). Relies on Hibernate dirty-checking to flush updates automatically upon commit.</li>
-     *   <li><b>Exception Scenarios:</b> Throws {@link ResourceNotFoundException} if ID is missing; throws {@link DuplicateResourceException} if target email is taken.</li>
-     *   <li><b>Design Decision:</b> Modifies managed entity in-place rather than creating a new instance, enabling Hibernate automatic dirty checking.</li>
-     * </ul>
      */
     @Override
     @Transactional
@@ -144,7 +152,6 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setDepartment(request.department());
         employee.setSalary(request.salary());
 
-        // Dirty checking automatically flushes changes at transaction commit; save is called for clarity
         Employee updated = employeeRepository.save(employee);
         log.info("Successfully updated employee with id: {}", updated.getId());
         return EmployeeResponse.fromEntity(updated);
@@ -152,16 +159,6 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     /**
      * Deletes an Employee by ID.
-     *
-     * <ul>
-     *   <li><b>Purpose:</b> Remove an employee record from the system.</li>
-     *   <li><b>Input:</b> {@code Long id} of the employee to remove.</li>
-     *   <li><b>Validation & Rules:</b> Employee must exist prior to deletion.</li>
-     *   <li><b>Repository Interaction:</b> {@link EmployeeRepository#existsById(Object)} followed by {@link EmployeeRepository#deleteById(Object)}.</li>
-     *   <li><b>Transaction Behavior:</b> {@code @Transactional} (read-write).</li>
-     *   <li><b>Exception Scenarios:</b> Throws {@link ResourceNotFoundException} if the ID is not found.</li>
-     *   <li><b>Design Decision:</b> Explicit existence check provides strict idempotent deletion semantics (404 on missing record).</li>
-     * </ul>
      */
     @Override
     @Transactional

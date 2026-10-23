@@ -92,7 +92,7 @@ class EmployeeServiceTest {
     void getAllEmployees_Success() {
         Pageable pageable = PageRequest.of(0, 10);
         Page<Employee> page = new PageImpl<>(List.of(sampleEmployee));
-        when(employeeRepository.searchEmployees(Department.ENGINEERING, "Asha", pageable)).thenReturn(page);
+        when(employeeRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class), eq(pageable))).thenReturn(page);
 
         Page<EmployeeResponse> result = employeeService.getAllEmployees(Department.ENGINEERING, "Asha", pageable);
 

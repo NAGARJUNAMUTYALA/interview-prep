@@ -121,7 +121,7 @@ class EmployeeControllerTest {
 
     @Test
     void testGetAllEmployees_Success() throws Exception {
-        when(employeeService.getAllEmployees(any(), any(), any(Pageable.class)))
+        when(employeeService.getAllEmployees(any(), any(), any(), any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(sampleResponse)));
 
         mockMvc.perform(get("/api/v1/employees")
@@ -129,7 +129,7 @@ class EmployeeControllerTest {
                         .param("size", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id").value(1))
-                .andExpect(jsonPath("$.totalElements").value(1));
+                .andExpect(jsonPath("$.page.totalElements").value(1));
     }
 
     @Test
