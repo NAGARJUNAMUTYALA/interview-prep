@@ -1,0 +1,18 @@
+services:
+  interview-prep-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: interview-prep-app
+    ports:
+      - "8081:8081"
+    environment:
+      SERVER_PORT: 8081
+      SPRING_PROFILES_ACTIVE: default
+    restart: unless-stopped
+    networks:
+      - prep-network
+
+networks:
+  prep-network:
+    driver: bridge

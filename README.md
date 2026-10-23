@@ -62,11 +62,41 @@ curl "http://localhost:8081/api/v1/prepStart?topic=Distributed%20Systems"
 mvn clean test
 ```
 
-### Run Application
+### Run Locally with Maven
 ```bash
 mvn spring-boot:run
 ```
 The service will start on port `8081`.
+
+---
+
+## Running with Docker & Docker Compose
+
+### Using Docker Compose (Recommended)
+```bash
+# Build and start container in detached mode
+docker compose up -d --build
+
+# View container logs
+docker compose logs -f
+
+# Stop container
+docker compose down
+```
+
+### Using Docker CLI
+```bash
+# Build Docker image
+docker build -t interview-prep-app:latest .
+
+# Run container
+docker run -d -p 8081:8081 --name interview-prep-app interview-prep-app:latest
+```
+
+Once running, test the endpoint:
+```bash
+curl http://localhost:8081/api/v1/prepStart
+```
 
 ---
 
